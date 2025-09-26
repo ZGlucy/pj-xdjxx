@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI开运穿搭官</title>
+
+  <!-- 分享预览 -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI开运穿搭官｜今天穿对了，好运更主动">
+  <meta property="og:description" content="一键生成今日穿搭 + 幸运色 + 商务谈判好运卡（动态生成）。">
+  <meta property="og:image" content="/cover.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="/cover.jpg">
+  <link rel="apple-touch-icon" href="/cover.jpg">
+
+  <style>
+    :root{
+      --card-max: 960px;
+      --radius: 16px;
+      --shadow-1: 0 6px 24px rgba(0,0,0,.10);
+      --shadow-2: 0 6px 24px rgba(0,0,0,.08);
+      --border: 1px solid #eee;
+      --primary: #ff7043;
+      --primary-hover: #ff5722;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #f8e79a 0%, transparent 60%),
+                  radial-gradient(1200px 600px at 80% 100%, #ecb177 0%, transparent 60%),
+                  linear-gradient(135deg,#f6d680,#eba567);
+      color:#222;
+    }
+    .ghost{ background:#fafafa; border:1px solid #eee; color:#333; cursor:pointer; padding:6px 10px; border-radius:10px; }
+    .ghost:hover{ background:#f3f3f3; }
+
+    .card{ max-width:var(--card-max); margin:40px auto 18px; padding:20px; background:#fff; border-radius:var(--radius); box-shadow:var(--shadow-1); }
+    .card h2{margin:0 0 6px}
+    .card p{margin:0 0 10px; color:#575757}
+    .controls{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center}
+    .controls label{white-space:nowrap}
+    .controls select, .card button{ padding:10px 12px; border-radius:10px; border:1px solid #ddd; background:#fff; outline:none; }
+    .card .btns{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap}
+    .card .btns button{ background:var(--primary); color:#fff; border:none; cursor:pointer; transition:background .2s ease, transform .05s ease; }
+    .card .btns button:hover{ background:var(--primary-hover) }
+    .card .btns button:active{ transform: translateY(1px) }
+
+    #result-section{ display:none; max-width:var(--card-max); margin:0 auto 36px; }
+    #result-section > .panel{ background:#fff; border-radius:var(--radius); box-shadow:var(--shadow-2); padding:18px; }
+    #result-meta{ font-size:14px; color:#666; margin-bottom:8px; }
+    #fortune-card{ display:none; border:1px dashed #cbd5e1; border-radius:12px; padding:12px; margin:10px 0 12px; background:#f8fafc }
+    #fortune-card b{ color:#0f766e }
+    #result-outfits{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+    .outfit-card{ border:var(--border); border-radius:14px; padding:12px; }
+    .outfit-card .name{ font-weight:700; margin-bottom:4px; }
+    .outfit-card .meta{ font-size:12px; color:#6b7280 }
+    .outfit-card .bar{ height:10px; border-radius:8px; background:#eee; margin:10px 0 6px; overflow:hidden; }
+    .outfit-card .bar > i{ display:block; height:100%; width:70% }
+    .outfit-card .sku{ font-size:12px; color:#8a8a8a }
+
+    #avatar-preview{ display:none; max-width:var(--card-max); margin:12px auto 24px; }
+    #avatar-preview > div{ background:#fff; border-radius:var(--radius); padding:16px; box-shadow:0 6px 24px rgba(0,0,0,.06); }
+    #avatar-img{ max-width:100%; border-radius:12px; display:block }
+
+    #sku-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; z-index:9999; }
+    #sku-modal .panel{ width:min(900px,94vw); background:#fff; border-radius:16px; padding:16px; max-height:86vh; overflow:auto; }
+    #sku-modal .head{ display:flex; justify-content:space-between; align-items:center; gap:8px }
+    #sku-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:12px }
+    .sku-item{ display:flex; gap:10px; align-items:flex-start; border:var(--border); border-radius:12px; padding:10px; }
+    #sku-modal button{ padding:8px 12px; border-radius:10px; border:1px solid #eee; background:#fafafa; cursor:pointer }
+    #actions{ margin-top:12px; display:flex; gap:10px; flex-wrap:wrap }
+    #actions button{ padding:8px 12px; border-radius:10px; border:1px solid #eee; background:#fafafa; cursor:pointer }
+
+    @media (max-width:640px){ .card{margin:16px 12px} #result-section{margin:0 12px 24px} }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
+      <button id="btn-auth" class="ghost">注册 / 登录</button>
+    </div>
+    <h2>AI开运穿搭官 ✨</h2>
+    <p>今天穿对了，好运更主动。（幸运穿上身，事事皆顺心）</p>
+
+    <div class="controls">
+      <label>场景：
+        <select data-field="scene">
+          <option>同学聚会</option><option>约会</option><option>通勤</option>
+          <option>运动</option><option>旅行</option><option>商务</option>
+        </select>
+      </label>
+      <label>天气/体感：
+        <select data-field="weather">
+          <option>适中</option><option>炎热</option><option>凉爽</option>
+          <option>寒冷</option><option>雨天</option>
+        </select>
+      </label>
+      <label>年龄段：
+        <select data-field="age"><option>18-25</option><option>26-35</option><option>36-45</option></select>
+      </label>
+      <label>性别：
+        <select data-field="gender"><option>女</option><option>男</option><option>中性</option></select>
+      </label>
+      <label>风格偏好：
+        <select data-field="style"><option>通用</option><option>甜酷</option><option>优雅</option><option>机能</option><option>商务</option></select>
+      </label>
+    </div>
+
+    <div class="btns">
+      <button id="btn-go" onclick="generateOutfit()">✨一键开运</button>
+      <button id="btn-upload">上传人像（虚拟试穿·即将上线）</button>
+      <button id="btn-sku">选择服装（品牌SKU·即将上线）</button>
+    </div>
+  </div>
+
+  <section id="result-section">
+    <div class="panel">
+      <h3 style="margin:0 0 8px;">今日开运穿搭 ✨</h3>
+      <div id="result-meta"></div>
+      <div id="fortune-card"></div>
+      <div id="result-outfits"></div>
+      <div id="result-reason" style="margin-top:10px; font-size:14px;"></div>
+      <div id="actions">
+        <button id="btn-copy">复制结果(JSON)</button>
+        <button id="btn-clear">清空结果</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="avatar-preview">
+    <div>
+      <strong>人像预览</strong>
+      <div style="margin-top:8px;"><img id="avatar-img" alt="avatar"></div>
+    </div>
+  </section>
+
+  <div id="sku-modal">
+    <div class="panel">
+      <div class="head">
+        <h3 style="margin:0;">可选服装库（勾选参与推荐）</h3>
+        <button id="sku-close">关闭</button>
+      </div>
+      <div style="font-size:12px;color:#666;margin:6px 0 12px;">以下为占位数据，后续可替换为真实品牌SKU与图片链接。</div>
+      <div id="sku-list"></div>
+      <div style="margin-top:12px; text-align:right;">
+        <button id="sku-save">保存并关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="auth-modal" style="display:none; position:fixed; inset:0;
+       background:rgba(0,0,0,.35); align-items:center; justify-content:center;
+       z-index:999999;">
+    <div style="width:min(420px,94vw); background:#fff; border-radius:16px; padding:16px; box-shadow:0 6px 24px rgba(0,0,0,.12);">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">注册 / 登录</h3>
+        <button id="auth-close" class="ghost">关闭</button>
+      </div>
+      <div style="margin-top:12px; display:grid; gap:8px;">
+        <input id="auth-phone" type="tel" inputmode="numeric" placeholder="手机号（中国大陆 11 位）" style="padding:10px; border:1px solid #ddd; border-radius:10px;">
+        <input id="auth-pass" type="password" placeholder="密码（演示用）" style="padding:10px; border:1px solid #ddd; border-radius:10px;">
+        <button id="auth-submit" style="padding:10px 12px; border:none; border-radius:10px; background:#ff7043; color:#fff; cursor:pointer;">提交</button>
+        <small style="color:#666;">演示版仅本地保存，不连服务器。</small>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if (!window.structuredClone) { window.structuredClone = function(obj){ return JSON.parse(JSON.stringify(obj)); }; }
+
+    var el = {
+      scene:  document.querySelector('select[data-field="scene"]'),
+      weather:document.querySelector('select[data-field="weather"]'),
+      age:    document.querySelector('select[data-field="age"]'),
+      gender: document.querySelector('select[data-field="gender"]'),
+      style:  document.querySelector('select[data-field="style"]'),
+
+      go:        document.getElementById('btn-go'),
+      upload:    document.getElementById('btn-upload'),
+      chooseSKU: document.getElementById('btn-sku'),
+      authBtn:   document.getElementById('btn-auth'),
+
+      resultSection: document.getElementById('result-section'),
+      resultMeta:    document.getElementById('result-meta'),
+      resultList:    document.getElementById('result-outfits'),
+      resultReason:  document.getElementById('result-reason'),
+      fortune:       document.getElementById('fortune-card'),
+      btnCopy: document.getElementById('btn-copy'),
+      btnClear:document.getElementById('btn-clear'),
+
+      avatarSection: document.getElementById('avatar-preview'),
+      avatarImg:     document.getElementById('avatar-img'),
+
+      skuModal: document.getElementById('sku-modal'),
+      skuList:  document.getElementById('sku-list'),
+      skuClose: document.getElementById('sku-close'),
+      skuSave:  document.getElementById('sku-save'),
+
+      authModal: document.getElementById('auth-modal'),
+      authClose: document.getElementById('auth-close'),
+      authSubmit:document.getElementById('auth-submit'),
+      authPhone: document.getElementById('auth-phone'),
+      authPass:  document.getElementById('auth-pass')
+    };
+
+    var LUCKY_PALETTES = {
+      sunny:['#F7B500','#FF6A00','#FFD166'],
+      cool:['#5C7CFA','#74C0FC','#B2F2BB'],
+      rain:['#4DABF7','#748FFC','#4DCCC4'],
+      neutral:['#8E9AAF','#F4ACB7','#9BF6FF']
+    };
+    var RULES = {
+      scene2style:{
+        '同学聚会':['休闲','简约'],
+        '约会':['甜酷','优雅'],
+        '通勤':['通勤','极简'],
+        '运动':['运动'],
+        '旅行':['户外','机能'],
+        '商务':['通勤','极简','优雅']
+      },
+      weather2tags:{
+        '适中':['T恤','休闲裤','乐福鞋'],
+        '炎热':['短袖','短裙|短裤','凉鞋'],
+        '凉爽':['衬衫','牛仔','运动鞋'],
+        '寒冷':['外套','毛衣','长裤','靴'],
+        '雨天':['防水外套','机能裤','防水鞋']
+      },
+      style2prefer:{
+        '通用':['简约','休闲','通勤'],
+        '甜酷':['甜酷','街头'],
+        '优雅':['优雅','通勤'],
+        '机能':['机能','户外'],
+        '商务':['通勤','极简','优雅']
+      }
+    };
+
+    var SKU_DB = [
+      {id:'t001',  name:'素色圆领T恤',   cat:'T恤',   styles:['休闲','简约','通勤'], scenes:['同学聚会','通勤','旅行'], weathers:['适中','炎热'], color:'#ffffff', checked:true},
+      {id:'s001',  name:'高腰牛仔裤',     cat:'牛仔', styles:['休闲','街头'],       scenes:['同学聚会','旅行'],       weathers:['适中','凉爽'], color:'#2b303b', checked:true},
+      {id:'sr001', name:'短裤',           cat:'短裤', styles:['休闲','街头'],       scenes:['旅行','同学聚会'],       weathers:['炎热'],       color:'#64748b', checked:true},
+
+      {id:'ts001', name:'真丝衬衫',       cat:'衬衫', styles:['优雅','通勤','商务'], scenes:['约会','通勤','商务'],     weathers:['适中','凉爽'], color:'#e2e8f0', checked:true},
+      {id:'d001',  name:'直筒通勤西裤',   cat:'长裤', styles:['通勤','极简'],       scenes:['通勤','商务'],           weathers:['适中','凉爽'], color:'#1f2937', checked:true},
+      {id:'sh001', name:'乐福鞋',         cat:'乐福鞋', styles:['通勤','优雅','简约'], scenes:['通勤','商务','同学聚会'], weathers:['适中','凉爽'], color:'#000000', checked:true},
+
+      {id:'sk001', name:'A字半身裙',     cat:'短裙',   styles:['优雅','甜酷'], scenes:['约会','同学聚会'],   weathers:['炎热','适中'], color:'#f472b6', checked:true, genders:['女']},
+      {id:'ps001', name:'职业铅笔裙',     cat:'半身裙', styles:['优雅','通勤','商务'], scenes:['商务','通勤','约会'], weathers:['适中','凉爽'], color:'#9b87f5', checked:true, genders:['女']},
+      {id:'dr001', name:'直筒连衣裙',     cat:'连衣裙', styles:['优雅','通勤'], scenes:['商务','约会','通勤'],   weathers:['适中','凉爽'], color:'#f8d7da', checked:true, genders:['女']},
+      {id:'hs001', name:'5cm猫跟高跟鞋',  cat:'高跟鞋', styles:['优雅','通勤','商务'], scenes:['商务','约会','通勤'], weathers:['适中','凉爽'], color:'#3b82f6', checked:true, genders:['女']},
+
+      {id:'bs004', name:'德比鞋',         cat:'正装鞋', styles:['通勤','优雅'], scenes:['商务','通勤'], weathers:['适中','凉爽'], color:'#0b0b0b', checked:true, genders:['男','中性']},
+
+      {id:'sn001', name:'跑步运动鞋',     cat:'运动鞋', styles:['运动','街头'], scenes:['运动','旅行'], weathers:['适中','凉爽'], color:'#94a3b8', checked:true},
+
+      {id:'o001',  name:'防泼水机能外套', cat:'外套',   styles:['机能','户外'], scenes:['旅行','运动'], weathers:['凉爽','雨天','寒冷'], color:'#0ea5e9', checked:true},
+      {id:'co001', name:'羊毛呢大衣',     cat:'大衣',   styles:['通勤','优雅','极简'], scenes:['商务','通勤'], weathers:['寒冷','凉爽'], color:'#374151', checked:true},
+
+      {id:'wd001', name:'防水短靴',       cat:'防水鞋', styles:['机能','通勤'], scenes:['旅行','通勤'], weathers:['雨天','寒冷'], color:'#111827', checked:true}
+    ];
+    for (var i=0;i<SKU_DB.length;i++){ if(!SKU_DB[i].genders){ SKU_DB[i].genders=['男','女','中性']; } }
+
+    function $el(html){ var t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; }
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+    function getPaletteByWeather(w){
+      if (w.indexOf('雨')>-1) return LUCKY_PALETTES.rain;
+      if (w.indexOf('凉')>-1 || w.indexOf('寒')>-1) return LUCKY_PALETTES.cool;
+      if (w.indexOf('热')>-1) return LUCKY_PALETTES.sunny;
+      return LUCKY_PALETTES.neutral;
+    }
+    var persist = {
+      save:function(k,v){ localStorage.setItem(k, JSON.stringify(v)); },
+      read:function(k,d){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v): (d===undefined?null:d);}catch(e){ return (d===undefined?null:d); } }
+    };
+
+    var DAILY_PALETTES = {
+      '女': {
+        '优雅': ['#8B5CF6','#FDFBFF','#F472B6','#AEC8FF','#845EC2'],
+        '商务': ['#6B7280','#FDFDFC','#8B5CF6','#1F2937','#D1D5DB'],
+        '甜酷': ['#F472B6','#111827','#AE85FF','#FDFBFF','#EC4899'],
+        '通用': ['#9B87F5','#FDFDFD','#60A5FA','#FDA4AF','#A7F3D0']
+      },
+      '男': {
+        '商务': ['#1F2937','#E5E7EB','#0EA5E9','#111827','#9CA3AF'],
+        '通用': ['#2563EB','#F3F4F6','#111827','#22D3EE','#9CA3AF']
+      },
+      '中性': { '通用': ['#A8B5C0','#EEEDEB','#9FA3B0','#E6DCCE','#C7D2FE'] }
+    };
+    function hashStr(s){ var h=0,i; for(i=0;i<s.length;i++){ h=(h*131 + s.charCodeAt(i))>>>0; } return h; }
+    function pickDailyColor(gender, stylePref){
+      var day = new Date().toISOString().slice(0,10);
+      var bank = (DAILY_PALETTES[gender] && DAILY_PALETTES[gender][stylePref]) ||
+                 (DAILY_PALETTES[gender] && DAILY_PALETTES[gender]['通用']) ||
+                 DAILY_PALETTES['中性']['通用'];
+      var idx = hashStr(day + '|' + gender + '|' + stylePref) % bank.length;
+      return bank[idx];
+    }
+
+    /* ===== 动态好运提示卡（极简强力版） ===== */
+    function r(arr){return arr[Math.floor(Math.random()*arr.length)];}
+    var SHORT = {
+      title:{
+        '商务': ['谈判顺风','签约心态','赢单模式','高效表达','决策窗口'],
+        '通勤': ['工作顺手','稳步推进','输出高能','节奏在线'],
+        '同学聚会': ['社交磁场','人见人爱','焦点在你'],
+        '约会': ['氛围拿捏','心动几率↑','温柔加成'],
+        '运动': ['状态在线','轻松达标','专注发力'],
+        '旅行': ['一路顺风','出片体质','轻松不累']
+      },
+      opener:{
+        '商务': ['先利后名，信息结论→要点→数据','先共识再方案，先收益再细节','做减法：不过三色、版型利落'],
+        '通勤': ['简洁即效率，留白胜装饰','优先同色系，快速通勤更体面'],
+        '同学聚会': ['松弛友好，低饱和更耐看','微光泽小面积点睛即可'],
+        '约会': ['语速放慢半拍更从容','线条简洁+提升腰线'],
+        '运动': ['功能优先，鞋稳抓地','外轻内暖应对温差'],
+        '旅行': ['轻量分层，口袋收纳有序','耐脏中性色优先']
+      },
+      tactic:{
+        gender:{
+          '女': ['姿态打开，配件小面积呼应','细节干净=可信度'],
+          '男': ['先给结论，再给证据','鞋面干净，减少杂色'],
+          '中性': ['结构先行，降噪配色','重点>次要>补充']
+        },
+        age:{
+          '18-25': ['用流程图讲清思路'],
+          '26-35': ['风险前置+里程碑'],
+          '36-45': ['收益/成本/边界先行']
+        },
+        weather:{
+          '炎热': ['轻薄外搭控温'],
+          '凉爽': ['加一层薄外套'],
+          '寒冷': ['大衣+包跟鞋更稳'],
+          '雨天': ['鞋履防水/备替换'],
+          '适中': ['同色系更干净']
+        },
+        style:{
+          '通用': ['简洁留白，一处亮点'],
+          '甜酷': ['材质反差做记忆点'],
+          '优雅': ['线条干净，低饱和'],
+          '机能': ['功能优先，耐磨面料'],
+          '商务': ['轮廓利落，三色以内']
+        }
+      }
+    };
+    function renderFortune(scene, luckyColor){
+      var weather = (el.weather && el.weather.value) || '适中';
+      var age     = (el.age && el.age.value) || '26-35';
+      var gender  = (el.gender && el.gender.value) || '中性';
+      var style   = (el.style && el.style.value) || '通用';
+
+      var title = (SHORT.title[scene] && r(SHORT.title[scene])) || '今日好运';
+      var core  = (SHORT.opener[scene] && r(SHORT.opener[scene])) || '简洁有力，版型利落';
+      var tips  = [
+        (SHORT.tactic.gender[gender] || [])[0],
+        (SHORT.tactic.age[age] || [])[0],
+        (SHORT.tactic.weather[weather] || [])[0],
+        (SHORT.tactic.style[style] || [])[0]
+      ].filter(Boolean);
+      var pick2 = [];
+      while (tips.length && pick2.length < 2) { pick2.push(tips.splice(Math.floor(Math.random()*tips.length),1)[0]); }
+
+      el.fortune.innerHTML =
+        '<div style="font-weight:700;font-size:16px;letter-spacing:.5px;">'+
+          '📌 ' + title +
+          ' <span style="display:inline-block;width:10px;height:10px;background:'+luckyColor+';border-radius:50%;vertical-align:1px;margin-left:6px" title="今日幸运色"></span>'+
+        '</div>'+
+        '<div style="margin-top:6px;"><b>'+ core +'</b></div>'+
+        (pick2.length ? '<div style="color:#64748b;margin-top:6px;font-size:13px;">'+ pick2.join(' ｜ ') +'</div>' : '');
+      el.fortune.style.display='block';
+    }
+
+    function openSkuModal(){
+      var data = persist.read('GOOD_LUCK_SKUS') || SKU_DB.slice();
+      el.skuList.innerHTML='';
+      for (var i=0;i<data.length;i++){
+        var item = data[i];
+        var card=$el('<label class="sku-item">'
+          + '<input type="checkbox" '+(item.checked!==false?'checked':'')+' data-id="'+item.id+'" style="margin-top:6px;">'
+          + '<div><div style="font-weight:600">'+item.name+'</div>'
+          + '<div style="font-size:12px;color:#666;">'+item.cat+' · '+item.styles.join('/')+' · '+item.scenes.join('/')+' · '+item.weathers.join('/')+'</div></div>'
+          + '</label>');
+        el.skuList.appendChild(card);
+      }
+      el.skuModal.style.display='flex';
+    }
+    window.openSkuModal = openSkuModal;
+    if (el.chooseSKU) el.chooseSKU.addEventListener('click', openSkuModal);
+    if (el.skuClose) el.skuClose.onclick = function(){ el.skuModal.style.display='none'; };
+    if (el.skuSave) el.skuSave.onclick = function(){
+      var cur = persist.read('GOOD_LUCK_SKUS') || structuredClone(SKU_DB);
+      var chks = el.skuList.querySelectorAll('input[type="checkbox"]');
+      for (var i=0;i<chks.length;i++){
+        var chk = chks[i];
+        for (var j=0;j<cur.length;j++){ if (cur[j].id===chk.dataset.id){ cur[j].checked = chk.checked; break; } }
+      }
+      persist.save('GOOD_LUCK_SKUS', cur);
+      el.skuModal.style.display='none';
+    };
+
+    if (el.upload) el.upload.addEventListener('click', function(){
+      var input=document.createElement('input'); input.type='file'; input.accept='image/*';
+      input.onchange=function(e){ var f=e.target.files&&e.target.files[0]; if(!f) return; el.avatarImg.src=URL.createObjectURL(f); el.avatarSection.style.display='block'; };
+      input.click();
+    });
+
+    function generateOutfit(){
+      var scene   = (el.scene && el.scene.value) || '同学聚会';
+      var weather = (el.weather && el.weather.value) || '适中';
+      var age     = (el.age && el.age.value) || '18-25';
+      var gender  = (el.gender && el.gender.value) || '中性';
+      var stylePref = (el.style && el.style.value) || '通用';
+
+      var source = persist.read('GOOD_LUCK_SKUS') || SKU_DB;
+      var active = [];
+      for (var i=0;i<source.length;i++){
+        var x = source[i];
+        if (x.checked===false) continue;
+        if (gender!=='中性' && x.genders && x.genders.indexOf(gender)===-1) continue;
+        active.push(x);
+      }
+
+      var sceneStyles = RULES.scene2style[scene] || ['休闲'];
+      var weatherCats = RULES.weather2tags[weather] || ['T恤','长裤'];
+      var styleLikes  = RULES.style2prefer[stylePref] || ['简约'];
+
+      var scored = [];
+      for (var k=0;k<active.length;k++){
+        var it = active[k], score=0;
+        if(it.scenes && it.scenes.indexOf(scene)>-1) score+=2;
+        if(it.weathers && it.weathers.indexOf(weather)>-1) score+=2;
+        if(it.styles && it.styles.some(function(s){return sceneStyles.indexOf(s)>-1;})) score+=2;
+        if(it.styles && it.styles.some(function(s){return styleLikes.indexOf(s)>-1;})) score+=1;
+        if(weatherCats.some(function(c){ return new RegExp(c).test(it.cat); })) score+=1;
+
+        if (gender==='女' && (scene==='商务' || stylePref==='优雅' || stylePref==='商务')) {
+          if (/连衣裙|半身裙|短裙/.test(it.cat)) score+=2;
+          if (/衬衫/.test(it.cat)) score+=1;
+          if (/高跟鞋/.test(it.cat)) score+=3;
+          if (/乐福鞋/.test(it.cat)) score+=1;
+        }
+        if (gender==='男' && (scene==='商务' || stylePref==='商务')) {
+          if (/长裤/.test(it.cat)) score+=2;
+          if (/正装鞋|乐福鞋/.test(it.cat)) score+=2;
+        }
+        if (weather.indexOf('雨')>-1 && /高跟鞋/.test(it.cat)) score-=3;
+        if (weather.indexOf('寒')>-1) {
+          if (/大衣|外套/.test(it.cat)) score+=2;
+          if (/长裤/.test(it.cat)) score+=1;
+          if (/短裙|短裤/.test(it.cat)) score-=2;
+        }
+        scored.push({ref:it, score:score});
+      }
+      scored.sort(function(a,b){ return b.score-a.score; });
+      var scoredRefs = scored.map(function(s){return s.ref;});
+
+      function pickByCats(cats){
+        for (var i=0;i<scoredRefs.length;i++){
+          var x = scoredRefs[i];
+          for (var j=0;j<cats.length;j++){ if (new RegExp(cats[j]).test(x.cat)) return x; }
+        }
+        return null;
+      }
+
+      var topCats = (scene==='商务' || stylePref==='优雅' || stylePref==='商务')
+        ? ['衬衫','连衣裙','T恤']
+        : (weather.indexOf('凉')>-1 || weather.indexOf('寒')>-1 ? ['衬衫','T恤','外套'] : ['T恤','衬衫']);
+      var top = pickByCats(topCats) || scoredRefs[0];
+
+      var bottom;
+      if (gender==='女' && (scene==='商务' || stylePref==='优雅' || stylePref==='商务') && weather.indexOf('寒')===-1) {
+        bottom = pickByCats(['半身裙','短裙']) || pickByCats(['长裤','牛仔']);
+      } else if (gender==='男' && (scene==='商务' || stylePref==='商务')) {
+        bottom = pickByCats(['长裤']) || pickByCats(['牛仔']);
+      } else {
+        bottom = pickByCats(['长裤','牛仔','短裤','短裙']) || scoredRefs[1] || scoredRefs[0];
+      }
+
+      var shoeCats;
+      if (weather.indexOf('雨')>-1) shoeCats = ['防水鞋','靴','运动鞋','乐福鞋'];
+      else if (gender==='女' && (scene==='商务' || stylePref==='优雅' || stylePref==='商务')) shoeCats = ['高跟鞋','乐福鞋','正装鞋','运动鞋'];
+      else if (gender==='男' && (scene==='商务' || stylePref==='商务')) shoeCats = ['正装鞋','乐福鞋','运动鞋'];
+      else shoeCats = ['运动鞋','乐福鞋','正装鞋'];
+      var shoes = pickByCats(shoeCats) || scoredRefs[2] || scoredRefs[0];
+
+      var coatNeed = weather.indexOf('凉')>-1 || weather.indexOf('雨')>-1 || weather.indexOf('寒')>-1;
+      var coat = coatNeed ? (pickByCats(['大衣','外套']) || null) : null;
+
+      var combo = [];
+      if (/连衣裙/.test(top.cat)) combo = [top, shoes].concat(coat? [coat] : []);
+      else combo = [top, bottom, shoes].concat(coat? [coat] : []);
+
+      var baseWeather = pick(getPaletteByWeather(weather));
+      var daily = pickDailyColor(gender, stylePref);
+      var luckyColor = daily || baseWeather;
+
+      var reason = '场景匹配：'+((RULES.scene2style[scene]||[]).join(' / ') || '—')
+                 + ' ｜ 天气适配：'+((RULES.weather2tags[weather]||[]).join('、') || '—')
+                 + ' ｜ 风格偏好：'+((RULES.style2prefer[stylePref]||[]).join(' / ') || '—')
+                 + ' ｜ 幸运色：'+luckyColor;
+
+      el.resultMeta.innerHTML = '场景：<b>'+scene+'</b>；天气：<b>'+weather+'</b>；年龄段：<b>'+age+'</b>；性别：<b>'+gender+'</b>；风格偏好：<b>'+stylePref+'</b>';
+      el.resultList.innerHTML = '';
+
+      var neutral = ['#ffffff','#f3f4f6','#e5e7eb','#111827','#000000','#2b303b','#1f2937','#374151'];
+      for (var c=0;c<combo.length;c++){
+        var it = combo[c];
+        var barColor = neutral.indexOf((it.color||'').toLowerCase())>-1 ? luckyColor : (it.color || luckyColor);
+        var card = '<div class="outfit-card">'
+          + '<div class="name">'+it.name+'</div>'
+          + '<div class="meta">'+it.cat+' · '+it.styles.join('/')+'</div>'
+          + '<div class="bar"><i style="background:'+barColor+'; width:'+(70+c*8)+'%"></i></div>'
+          + '<div class="sku">SKU：'+it.id+'</div>'
+          + '</div>';
+        el.resultList.insertAdjacentHTML('beforeend', card);
+      }
+      el.resultReason.innerHTML = '<b>推荐理由：</b>'+reason;
+      el.resultSection.style.display='block';
+
+      renderFortune(scene, luckyColor);
+
+      var exported = { scene:scene, weather:weather, age:age, gender:gender, stylePref:stylePref, luckyColor:luckyColor,
+        items: combo.map(function(x){return {id:x.id,name:x.name,cat:x.cat};}) };
+      persist.save('GOOD_LUCK_LAST', exported);
+      return exported;
+    }
+    window.generateOutfit = generateOutfit;
+
+    if (el.btnCopy) el.btnCopy.addEventListener('click', function(){
+      var data = persist.read('GOOD_LUCK_LAST');
+      if(!data){ alert('暂无结果'); return; }
+      var text = JSON.stringify(data, null, 2);
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function(){ alert('已复制到剪贴板'); });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.style.position='fixed'; ta.style.opacity='0'; ta.select();
+        try { document.execCommand('copy') ? alert('已复制到剪贴板') : alert('请长按选择复制'); }
+        finally { ta.parentNode.removeChild(ta); }
+      }
+    });
+    if (el.btnClear) el.btnClear.addEventListener('click', function(){
+      localStorage.removeItem('GOOD_LUCK_LAST');
+      el.resultSection.style.display='none';
+    });
+
+    function maskPhone(p){ return p && p.length===11 ? (p.slice(0,3)+'****'+p.slice(7)) : p; }
+    function updateAuthUI(){
+      var u = persist.read('AUTH_USER');
+      el.authBtn.textContent = (u && u.phone) ? (maskPhone(u.phone) + '（退出）') : '注册 / 登录';
+    }
+    if (el.authBtn) el.authBtn.addEventListener('click', function(){
+      var u = persist.read('AUTH_USER');
+      if (u && u.phone){ localStorage.removeItem('AUTH_USER'); updateAuthUI(); alert('已退出'); }
+      else { el.authModal.style.display='flex'; setTimeout(function(){ if(el.authPhone) el.authPhone.focus(); }, 0); }
+    });
+    if (el.authClose) el.authClose.addEventListener('click', function(){ el.authModal.style.display='none'; });
+    if (el.authSubmit) el.authSubmit.addEventListener('click', function(){
+      var phoneRaw=(el.authPhone.value||'').trim();
+      var pass=(el.authPass.value||'').trim();
+      var m = phoneRaw.match(/^\s*(?:\+?86[-\s]?)?(1[3-9]\d{9})\s*$/);
+      if(!m){ alert('请输入合法的中国大陆手机号'); return; }
+      var phone = m[1];
+      if(!pass || pass.length<4){ alert('请输入至少 4 位密码（演示用）'); return; }
+      persist.save('AUTH_USER',{phone:phone}); el.authModal.style.display='none'; updateAuthUI(); alert('登录成功（演示）');
+    });
+
+    (function(){
+      var skus = persist.read('GOOD_LUCK_SKUS');
+      if (skus){ for(var i=0;i<skus.length;i++){ var s=skus[i]; for(var j=0;j<SKU_DB.length;j++){ if(SKU_DB[j].id===s.id){ SKU_DB[j].checked=s.checked; break; } } } }
+      var last = persist.read('GOOD_LUCK_LAST');
+      if(last){
+        el.resultSection.style.display='block';
+        el.resultMeta.innerHTML = '场景：<b>'+last.scene+'</b>；天气：<b>'+last.weather+'</b>；年龄段：<b>'+last.age+'</b>；性别：<b>'+(last.gender||'中性')+'</b>；风格偏好：<b>'+last.stylePref+'</b>';
+        renderFortune(last.scene, last.luckyColor);
+        var html = '';
+        for (var i=0;i<last.items.length;i++){
+          var it=last.items[i], full=null;
+          for (var j=0;j<SKU_DB.length;j++){ if(SKU_DB[j].id===it.id){ full=SKU_DB[j]; break; } }
+          var name=(full&&full.name)||it.name||it.id; var cat=(full&&full.cat)||it.cat||'-'; var color=(full&&full.color)||'#eee';
+          var neutral=['#ffffff','#f3f4f6','#e5e7eb','#111827','#000000','#2b303b','#1f2937','#374151'];
+          var barColor = neutral.indexOf((color||'').toLowerCase())>-1 ? last.luckyColor : (color || last.luckyColor);
+          html += '<div class="outfit-card">'
+            + '<div class="name">'+name+'</div>'
+            + '<div class="meta">'+cat+'</div>'
+            + '<div class="bar"><i style="background:'+barColor+'; width:72%"></i></div>'
+            + '<div class="sku">SKU：'+it.id+'</div>'
+            + '</div>';
+        }
+        el.resultList.innerHTML = html;
+        el.resultReason.innerHTML = '<b>提示：</b>这是上次生成的结果（已从本地存储恢复）。';
+      }
+      updateAuthUI();
+    })();
+  </script>
+</body>
+</html>
